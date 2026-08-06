@@ -277,41 +277,21 @@ else:
 
             st.divider()
 
-            st.header("Strategy")
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-
-                st.metric(
-                    "Action",
-                    strategy.action
-                )
-
-            with col2:
-
-                st.metric(
-                    "Difficulty",
-                    strategy.difficulty
-                )
-
-            st.write(strategy.reason)
-
             if result["report"] is None:
 
                 st.divider()
 
-                st.session_state.question = (
-                    result["question"]
-                )
+                st.session_state.question = result["question"]
 
                 st.subheader("Next Question")
 
-                st.success(
-                    st.session_state.question
-                )
+                st.success(st.session_state.question)
 
                 st.stop()
+
+            else:
+
+                report = result["report"]
 
                 st.divider()
 

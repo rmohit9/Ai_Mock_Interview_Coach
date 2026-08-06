@@ -19,29 +19,25 @@ class EvaluatorAgent:
     ) -> Evaluation:
 
         prompt = f"""
-Target Role:
-{role}
+    Target Role:
+    {role}
 
-Interview Question:
-{question}
+    Interview Question:
+    {question}
 
-Candidate Answer:
-{answer}
+    Candidate Answer:
+    {answer}
 
-Evaluate the answer objectively.
+    Evaluate the answer objectively.
 
-Return ONLY valid JSON.
-"""
+    Return ONLY valid JSON.
+    """
 
         response = self.llm.generate(
             prompt=prompt,
             system_prompt=self.system_prompt,
         )
 
-        try:
-            return Evaluation(**parse_json(response))
-
-        except Exception as e:
-            print("Invalid JSON returned by LLM:")
-            print(response)
-            raise e
+        return Evaluation(
+            **parse_json(response)
+        )

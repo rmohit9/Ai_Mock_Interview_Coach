@@ -1,31 +1,51 @@
 from typing import Optional
+from pydantic import BaseModel, Field
 
-from typing_extensions import TypedDict
-
-from models.resume_profile import ResumeProfile
+from models.resume import ResumeProfile
 from models.evaluation import Evaluation
 from models.strategy import Strategy
-from models.report import Report
+from models.report import InterviewReport
 
 
-class InterviewState(TypedDict):
+class InterviewState(BaseModel):
 
-    role: str
+    # -------------------------
+    # User Input
+    # -------------------------
 
-    resume: str
+    role: str = ""
+    resume: str = ""
+    focus: str = ""
 
-    focus: str
+    # -------------------------
+    # Runtime
+    # -------------------------
 
-    answer: str
+    thread_id: str = ""
 
-    question: str
+    current_question: str = ""
+    current_answer: str = ""
 
-    resume_profile: Optional[ResumeProfile]
+    # -------------------------
+    # Agent Outputs
+    # -------------------------
 
-    evaluation: Optional[Evaluation]
+    resume_profile: Optional[ResumeProfile] = None
+    evaluation: Optional[Evaluation] = None
+    strategy: Optional[Strategy] = None
+    report: Optional[InterviewReport] = None
 
-    strategy: Optional[Strategy]
+    # -------------------------
+    # History
+    # -------------------------
 
-    report: Optional[Report]
+    evaluation_history: list = Field(default_factory=list)
 
-    interview_finished: bool
+    conversation_history: list = Field(default_factory=list)
+
+   
+    # -------------------------
+    # Interview Status
+    # -------------------------
+
+    interview_finished: bool = False

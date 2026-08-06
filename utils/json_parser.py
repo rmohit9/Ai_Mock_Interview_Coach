@@ -34,10 +34,6 @@ def parse_json(text: str) -> dict:
 
     except json.JSONDecodeError as e:
 
-        print("\n---JSON PARSE ERROR---")
-        print(text)
-        print("======================================\n")
-
         raise ValueError(
             f"Invalid JSON returned by the LLM.\n\n{e}"
         )

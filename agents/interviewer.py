@@ -39,8 +39,6 @@ Interview Focus:
 
 Instructions
 
-Instructions
-
 • Read the candidate's resume carefully.
 
 • Introduce yourself in ONE short sentence.
@@ -80,10 +78,10 @@ Instructions
         self,
         answer: str,
         strategy,
-        memory,
+        state,
     ) -> str:
 
-        # Keep local history for compatibility
+        # Save latest user answer
         self.conversation_history.append(
             {
                 "role": "user",
@@ -91,7 +89,11 @@ Instructions
             }
         )
 
-        history = memory.conversation_text()
+        # Build conversation history from LangGraph state
+        history = "\n".join(
+            f"{msg['role']}: {msg['content']}"
+            for msg in state.conversation_history
+        )
 
         prompt = f"""
 Continue the interview.
@@ -102,30 +104,9 @@ Conversation History
 
 Candidate Resume Profile
 
-{memory.resume_profile}
-
-Topics Covered
-
-{memory.topics_covered}
-
-Weak Topics
-
-{memory.weak_topics}
-
-Strong Topics
-
-{memory.strong_topics}
-
-Interview Progress
-
-Question Number:
-{memory.question_count}
-
-Current Difficulty:
-{memory.current_difficulty}
+{state.resume_profile.model_dump_json(indent=4)}
 
 Strategy
-
 
 Action:
 {strategy.action}
@@ -205,12 +186,8 @@ Rules
 
         for message in self.conversation_history:
 
-            history += (
-                f"{message['role'].upper()}:\n"
-            )
-
+            history += f"{message['role'].upper()}:\n"
             history += message["content"]
-
             history += "\n\n"
 
         return history
