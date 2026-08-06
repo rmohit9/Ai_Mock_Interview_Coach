@@ -1,12 +1,6 @@
-from agents.interviewer import InterviewerAgent
-from agents.evaluator import EvaluatorAgent
-from agents.strategist import StrategyAgent
-from agents.coach import CoachAgent
+from services.interview_service import InterviewService
 
-interviewer = InterviewerAgent()
-evaluator = EvaluatorAgent()
-strategist = StrategyAgent()
-coach = CoachAgent()
+service = InterviewService()
 
 role = input("Target Role: ")
 resume = input("Resume Summary: ")
@@ -14,7 +8,7 @@ focus = input("Focus Area: ")
 
 print()
 
-question = interviewer.start_interview(
+question = service.start_interview(
     role,
     resume,
     focus,
@@ -22,52 +16,28 @@ question = interviewer.start_interview(
 
 print(question)
 
-all_evaluations = []
-
 while True:
 
     answer = input("\nYour Answer: ")
 
     if answer.lower() == "exit":
-        print("\nInterview Ended.")
+        print("Interview Ended.")
         break
 
-    evaluation = evaluator.evaluate(
-        question=question,
-        answer=answer,
-        role=role,
-    )
-
-    all_evaluations.append(
-        evaluation.model_dump()
-    )
+    result = service.process_answer(answer)
 
     print("\n========== Evaluation ==========")
-    print(evaluation)
-
-    strategy = strategist.decide(evaluation)
+    print(result["evaluation"])
 
     print("\n========== Strategy ==========")
-    print(strategy)
+    print(result["strategy"])
 
-    if strategy.action == "END_INTERVIEW":
-        print("\nInterview Finished.")
+    if result["report"] is not None:
+
+        print("\n========== FINAL REPORT ==========\n")
+        print(result["report"])
+
         break
 
-    question = interviewer.continue_interview(
-        answer=answer,
-        strategy=strategy,
-    )
-
     print("\n========== Next Question ==========")
-    print(question)
-
-
-report = coach.generate_report(
-    role=role,
-    history=interviewer.get_history(),
-    evaluations=all_evaluations,
-)
-
-print("\n========== FINAL REPORT ==========\n")
-print(report)
+    print(result["question"])

@@ -23,26 +23,34 @@ class InterviewerAgent:
     def start_interview(
         self,
         role: str,
-        resume: str,
+        resume_profile: str,
         focus_area: str,
     ) -> str:
 
         prompt = f"""
-Candidate Role:
-{role}
+    Candidate Role:
+    {role}
 
-Resume Summary:
-{resume}
+    Candidate Resume Profile:
 
-Focus Area:
-{focus_area}
+    {resume_profile}
 
-Start a realistic interview.
+    Focus Area:
+    {focus_area}
 
-Introduce yourself briefly.
+    Instructions:
 
-Ask ONLY the first interview question.
-"""
+    1. Read the resume profile carefully.
+    2. Ask questions based on the candidate's projects.
+    3. Ask questions based on the candidate's skills.
+    4. Ask questions based on technologies mentioned.
+    5. Start with an easy question.
+    6. Ask ONLY one question.
+    7. Do not evaluate.
+    8. Do not provide hints.
+
+    Introduce yourself briefly and ask the first interview question.
+    """
 
         response = self.llm.generate(
             prompt=prompt,
@@ -60,54 +68,60 @@ Ask ONLY the first interview question.
 
     def continue_interview(
         self,
-        candidate_answer: str,
+        answer: str,
         strategy,
     ) -> str:
 
         self.conversation_history.append(
             {
                 "role": "user",
-                "content": candidate_answer,
+                "content": answer,
             }
         )
 
         history = ""
 
-        for message in self.conversation_history:
+        for msg in self.conversation_history:
 
             history += (
-                f"{message['role'].upper()}: "
-                f"{message['content']}\n\n"
+                f"{msg['role'].upper()}: "
+                f"{msg['content']}\n\n"
             )
 
         prompt = f"""
-        Continue the interview.
+    Continue the interview.
 
-        Conversation so far:
+    Conversation:
 
-        {history}
+    {history}
 
-        Latest Strategy:
+    Strategy Decision
 
-        Action: {strategy.action}
+    Action:
+    {strategy.action}
 
-        Difficulty: {strategy.difficulty}
+    Difficulty:
+    {strategy.difficulty}
 
-        Reason:
-        {strategy.reason}
+    Reason:
+    {strategy.reason}
 
-        Follow the strategy exactly.
+    Rules:
 
-        If the strategy says:
+    If action is ASK_FOLLOW_UP:
+    Ask a follow-up.
 
-        - DECREASE_DIFFICULTY -> Ask an easier question.
-        - INCREASE_DIFFICULTY -> Ask a harder question.
-        - ASK_FOLLOW_UP -> Ask a follow-up on the previous answer.
-        - SWITCH_TOPIC -> Change to another relevant topic.
-        - END_INTERVIEW -> Do not ask another question.
+    If action is INCREASE_DIFFICULTY:
+    Ask a harder question.
 
-        Ask ONLY ONE question.
-        """
+    If action is DECREASE_DIFFICULTY:
+    Ask an easier question.
+
+    If action is SWITCH_TOPIC:
+    Move to another skill/project.
+
+    Ask ONLY one interview question.
+    """
 
         response = self.llm.generate(
             prompt=prompt,
