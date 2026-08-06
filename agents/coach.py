@@ -11,31 +11,34 @@ class CoachAgent:
 
         self.llm = LLM()
 
-        self.system_prompt = load_prompt(
-            "coach.txt"
-        )
+        self.system_prompt = load_prompt("coach.txt")
 
     def generate_report(
         self,
         role,
+        resume_profile,
         history,
         evaluations,
     ) -> InterviewReport:
 
         prompt = f"""
-Candidate Role:
+Candidate Role
 
 {role}
 
-Conversation History:
+Resume Profile
+
+{resume_profile}
+
+Conversation
 
 {history}
 
-Evaluation Results:
+Evaluation Results
 
 {evaluations}
 
-Generate the final interview report.
+Generate the complete interview report.
 
 Return ONLY JSON.
 """

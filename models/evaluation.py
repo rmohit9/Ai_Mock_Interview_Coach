@@ -1,5 +1,4 @@
 from typing import List
-
 from pydantic import BaseModel
 
 
@@ -10,6 +9,8 @@ class Evaluation(BaseModel):
     communication: int
 
     confidence: int
+
+    problem_solving: int
 
     depth: int
 

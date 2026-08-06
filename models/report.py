@@ -1,9 +1,10 @@
 from typing import List
-
 from pydantic import BaseModel
 
 
 class InterviewReport(BaseModel):
+
+    candidate_summary: str
 
     overall_score: float
 
@@ -13,6 +14,8 @@ class InterviewReport(BaseModel):
 
     confidence_score: float
 
+    problem_solving_score: float
+
     depth_score: float
 
     completeness_score: float
@@ -21,8 +24,10 @@ class InterviewReport(BaseModel):
 
     weaknesses: List[str]
 
-    recommendations: List[str]
+    improvement_plan: List[str]
+
+    recommended_learning_topics: List[str]
 
     hiring_recommendation: str
 
-    overall_feedback: str
+    final_remarks: str

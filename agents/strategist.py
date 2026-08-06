@@ -1,4 +1,5 @@
 from models.strategy import Strategy
+
 from utils.llm import LLM
 from utils.prompt_loader import load_prompt
 from utils.json_parser import parse_json
@@ -7,19 +8,26 @@ from utils.json_parser import parse_json
 class StrategyAgent:
 
     def __init__(self):
-        self.llm = LLM()
-        self.system_prompt = load_prompt("strategist.txt")
 
-    def decide(self, evaluation: Strategy) -> Strategy:
+        self.llm = LLM()
+
+        self.system_prompt = load_prompt(
+            "strategist.txt"
+        )
+
+    def decide(
+        self,
+        evaluation,
+    ) -> Strategy:
 
         prompt = f"""
-Latest Evaluation:
+Latest Evaluation
 
 {evaluation.model_dump_json(indent=4)}
 
-Decide what should happen next.
+Decide the next interview strategy.
 
-Return ONLY valid JSON.
+Return JSON only.
 """
 
         response = self.llm.generate(
@@ -27,4 +35,6 @@ Return ONLY valid JSON.
             system_prompt=self.system_prompt,
         )
 
-        return Strategy(**parse_json(response))
+        return Strategy(
+            **parse_json(response)
+        )

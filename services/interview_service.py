@@ -74,6 +74,7 @@ class InterviewService:
 
             report = self.coach.generate_report(
                 role=self.role,
+                resume_profile=self.resume_profile.model_dump_json(indent=4),
                 history=self.interviewer.get_history(),
                 evaluations=self.all_evaluations,
             )

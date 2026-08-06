@@ -132,6 +132,10 @@ else:
                 "Completeness",
                 evaluation.completeness
             )
+            st.metric(
+                "Problem Solving",
+                evaluation.problem_solving
+            )
 
         st.subheader("Strengths")
 
