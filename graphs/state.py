@@ -25,6 +25,7 @@ class InterviewState(BaseModel):
 
     current_question: str = ""
     current_answer: str = ""
+    question_count: int = 0
 
     # -------------------------
     # Agent Outputs

@@ -158,10 +158,23 @@ def coach_node(state: InterviewState):
 
 def should_continue(state: InterviewState):
 
-    if len(state.evaluation_history) >= 7 or state.strategy.action == "END_INTERVIEW":
-        return "coach"
+    question_count = len(state.evaluation_history)
 
-    return "interviewer"
+    # Never end before 5 answered questions
+    if question_count < 4:
+        return "interviewer"
+
+    # Between 5 and 6 questions,
+    # allow the Strategy Agent to decide
+    if question_count < 6:
+
+        if state.strategy.action == "END_INTERVIEW":
+            return "coach"
+
+        return "interviewer"
+
+    # Hard stop after 7 questions
+    return "coach"
 
 
 # --------------------------------------------------

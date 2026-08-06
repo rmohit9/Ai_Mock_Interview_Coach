@@ -37,3 +37,5 @@ class ResumeProfile(BaseModel):
     weaknesses: List[str] = []
 
     recommended_interview_topics: List[str] = []
+
+    interview_priority: List[str] = []

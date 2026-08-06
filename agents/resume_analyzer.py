@@ -3,6 +3,7 @@ from models.resume import ResumeProfile
 from utils.llm import LLM
 from utils.prompt_loader import load_prompt
 from utils.json_parser import parse_json
+from models.resume import ResumeProfile
 
 
 class ResumeAnalyzerAgent:

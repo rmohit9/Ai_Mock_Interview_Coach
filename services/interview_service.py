@@ -10,10 +10,10 @@ class InterviewService:
 
     def __init__(self):
 
-        self.thread_id = None
+        self.thread_id = str(uuid4())
 
         self.config = None
-
+        self.graph = graph
         self.interview_finished = False
 
     def start_interview(
@@ -78,3 +78,15 @@ class InterviewService:
             "strategy": result.get("strategy"),
             "report": result.get("report"),
         }
+    
+    def end_interview(self):
+
+        from graphs.workflow import coach_node
+
+        state = self.graph.get_state(self.config).values
+
+        state.strategy.action = "END_INTERVIEW"
+
+        state = coach_node(state)
+
+        return state.report

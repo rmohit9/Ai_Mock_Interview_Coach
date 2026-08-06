@@ -25,7 +25,7 @@ class InterviewerAgent:
         role: str,
         resume_profile: str,
         focus_area: str,
-    ) -> str:
+        ) -> str:
 
         prompt = f"""
 Candidate Role:
@@ -39,25 +39,77 @@ Interview Focus:
 
 Instructions
 
-• Read the candidate's resume carefully.
+Read the candidate's resume carefully.
 
-• Introduce yourself in ONE short sentence.
+Identify the strongest technology or programming language from the resume.
 
-• Ask EXACTLY ONE easy interview question.
+Introduce yourself in ONE short sentence.
 
-• Base the first question on the candidate's strongest project.
+Start the interview with ONE EASY question not just the generic chatgpt text like: Hello , it's great to have you here. I'll be conducting your technical interview today. Let's begin with a foundational question ask actual questions based on the candidate's resume and the strongest technology or programming language identified.
 
-• If no projects exist, use technologies.
+The first question should assess basic understanding.
 
-• If no technologies exist, use skills.
+Never start with:
 
-• Never ask multiple questions.
+• Project architecture
 
-• Never evaluate.
+• Optimization
 
-• Never provide hints.
+• System Design
 
-• Maximum 35 words.
+• Scalability
+
+• Debugging
+
+Preferred order for the first question:
+
+1. Programming Language
+
+2. Framework
+
+3. Database
+
+4. AI/ML Concept
+
+5. Project Purpose
+
+Examples
+
+Good
+
+"What is Python?"
+
+"What is Flask?"
+
+"What is REST API?"
+
+"What is Machine Learning?"
+
+"What problem does your RAG chatbot solve?"
+
+Bad
+
+"Explain the architecture of your chatbot."
+
+"How would you optimize retrieval latency?"
+
+"Design a scalable backend."
+
+Rules
+
+Ask EXACTLY ONE question.
+
+Maximum 30 words.
+
+Never evaluate.
+
+Never explain.
+
+Never provide hints.
+
+Never ask multiple questions.
+
+Return ONLY the interview question.
 """
 
         response = self.llm.generate(
@@ -122,6 +174,43 @@ Question Type:
 
 Reason:
 {strategy.reason}
+
+Interview Progress Rules
+
+The strategy has already decided:
+
+• Topic
+
+• Difficulty
+
+• Question Type
+
+You must strictly follow them.
+
+Question progression must feel natural.
+
+Easy:
+Definition → Concept
+
+Medium:
+Implementation → Practical Usage
+
+Hard:
+Scenario → Optimization → Debugging
+
+Never jump directly from Definition to Optimization.
+
+Never ask architecture before implementation.
+
+Never switch topics unless the strategy explicitly changes the topic.
+
+If the strategy says DECREASE_DIFFICULTY:
+
+Ask a simpler question about the SAME topic.
+
+If the strategy says INCREASE_DIFFICULTY:
+
+Ask a more advanced question about the SAME topic.
 
 Rules
 
