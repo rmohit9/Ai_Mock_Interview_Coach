@@ -2,8 +2,11 @@ from agents.interviewer import InterviewerAgent
 from agents.evaluator import EvaluatorAgent
 from agents.strategist import StrategyAgent
 from agents.coach import CoachAgent
-from utils.logger import InterviewLogger
 from agents.resume_analyzer import ResumeAnalyzerAgent
+
+from memory.interview_memory import InterviewMemory
+
+from utils.logger import InterviewLogger
 
 
 class InterviewService:
@@ -15,7 +18,11 @@ class InterviewService:
         self.strategist = StrategyAgent()
         self.coach = CoachAgent()
         self.resume_analyzer = ResumeAnalyzerAgent()
+
+        self.memory = InterviewMemory()
+
         self.resume_profile = None
+
         self.role = ""
         self.resume = ""
         self.focus = ""
@@ -33,18 +40,51 @@ class InterviewService:
         focus,
     ):
 
+        # Reset interview state
+        self.memory = InterviewMemory()
+
+        self.all_evaluations = []
+
+        self.interview_finished = False
+
+        self.current_question = ""
+
+        if not resume.strip():
+
+            raise ValueError(
+                "Resume text is empty."
+            )
+
         self.role = role
         self.resume = resume
-        self.resume_profile = self.resume_analyzer.analyze(
-            resume
-        )
-
         self.focus = focus
+
+        try:
+
+            self.resume_profile = self.resume_analyzer.analyze(
+                resume
+            )
+
+        except Exception as e:
+
+            raise Exception(
+                f"Resume analysis failed: {str(e)}"
+            )
+
+        self.memory.resume_profile = (
+            self.resume_profile.model_dump()
+        )
 
         self.current_question = self.interviewer.start_interview(
             role,
-            self.resume_profile.model_dump_json(indent=4),
+            self.resume_profile.model_dump_json(
+                indent=4
+            ),
             focus,
+        )
+
+        self.memory.add_question(
+            self.current_question
         )
 
         return self.current_question
@@ -54,10 +94,18 @@ class InterviewService:
         answer,
     ):
 
+        self.memory.add_answer(
+            answer
+        )
+
         evaluation = self.evaluator.evaluate(
             question=self.current_question,
             answer=answer,
             role=self.role,
+        )
+
+        self.memory.add_evaluation(
+            evaluation.model_dump()
         )
 
         self.all_evaluations.append(
@@ -68,16 +116,23 @@ class InterviewService:
             evaluation
         )
 
+        self.memory.add_strategy(
+            strategy.model_dump()
+        )
+
         if strategy.action == "END_INTERVIEW":
 
             self.interview_finished = True
 
             report = self.coach.generate_report(
                 role=self.role,
-                resume_profile=self.resume_profile.model_dump_json(indent=4),
-                history=self.interviewer.get_history(),
+                resume_profile=self.resume_profile.model_dump_json(
+                    indent=4
+                ),
+                history=self.memory.conversation_text(),
                 evaluations=self.all_evaluations,
             )
+
             InterviewLogger.save(
                 report.model_dump()
             )
@@ -89,9 +144,16 @@ class InterviewService:
                 "question": None,
             }
 
-        self.current_question = self.interviewer.continue_interview(
-            answer,
-            strategy,
+        self.current_question = (
+            self.interviewer.continue_interview(
+                answer,
+                strategy,
+                self.memory,
+            )
+        )
+
+        self.memory.add_question(
+            self.current_question
         )
 
         return {

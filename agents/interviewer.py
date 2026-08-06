@@ -4,12 +4,12 @@ from utils.prompt_loader import load_prompt
 
 class InterviewerAgent:
     """
-    Handles the interview conversation.
+    Conducts the interview by asking adaptive questions.
 
     Responsibilities:
     - Start the interview
-    - Ask interview questions
-    - Maintain conversation history
+    - Continue the interview
+    - Generate one question at a time
     """
 
     def __init__(self):
@@ -28,29 +28,39 @@ class InterviewerAgent:
     ) -> str:
 
         prompt = f"""
-    Candidate Role:
-    {role}
+Candidate Role:
+{role}
 
-    Candidate Resume Profile:
+Candidate Resume Profile:
+{resume_profile}
 
-    {resume_profile}
+Interview Focus:
+{focus_area}
 
-    Focus Area:
-    {focus_area}
+Instructions
 
-    Instructions:
+Instructions
 
-    1. Read the resume profile carefully.
-    2. Ask questions based on the candidate's projects.
-    3. Ask questions based on the candidate's skills.
-    4. Ask questions based on technologies mentioned.
-    5. Start with an easy question.
-    6. Ask ONLY one question.
-    7. Do not evaluate.
-    8. Do not provide hints.
+• Read the candidate's resume carefully.
 
-    Introduce yourself briefly and ask the first interview question.
-    """
+• Introduce yourself in ONE short sentence.
+
+• Ask EXACTLY ONE easy interview question.
+
+• Base the first question on the candidate's strongest project.
+
+• If no projects exist, use technologies.
+
+• If no technologies exist, use skills.
+
+• Never ask multiple questions.
+
+• Never evaluate.
+
+• Never provide hints.
+
+• Maximum 35 words.
+"""
 
         response = self.llm.generate(
             prompt=prompt,
@@ -70,8 +80,10 @@ class InterviewerAgent:
         self,
         answer: str,
         strategy,
+        memory,
     ) -> str:
 
+        # Keep local history for compatibility
         self.conversation_history.append(
             {
                 "role": "user",
@@ -79,49 +91,99 @@ class InterviewerAgent:
             }
         )
 
-        history = ""
-
-        for msg in self.conversation_history:
-
-            history += (
-                f"{msg['role'].upper()}: "
-                f"{msg['content']}\n\n"
-            )
+        history = memory.conversation_text()
 
         prompt = f"""
-    Continue the interview.
+Continue the interview.
 
-    Conversation:
+Conversation History
 
-    {history}
+{history}
 
-    Strategy Decision
+Candidate Resume Profile
 
-    Action:
-    {strategy.action}
+{memory.resume_profile}
 
-    Difficulty:
-    {strategy.difficulty}
+Topics Covered
 
-    Reason:
-    {strategy.reason}
+{memory.topics_covered}
 
-    Rules:
+Weak Topics
 
-    If action is ASK_FOLLOW_UP:
-    Ask a follow-up.
+{memory.weak_topics}
 
-    If action is INCREASE_DIFFICULTY:
-    Ask a harder question.
+Strong Topics
 
-    If action is DECREASE_DIFFICULTY:
-    Ask an easier question.
+{memory.strong_topics}
 
-    If action is SWITCH_TOPIC:
-    Move to another skill/project.
+Interview Progress
 
-    Ask ONLY one interview question.
-    """
+Question Number:
+{memory.question_count}
+
+Current Difficulty:
+{memory.current_difficulty}
+
+Strategy
+
+
+Action:
+{strategy.action}
+
+Difficulty:
+{strategy.difficulty}
+
+Next Topic:
+{strategy.next_topic}
+
+Question Type:
+{strategy.question_type}
+
+Reason:
+{strategy.reason}
+
+Rules
+
+• Ask EXACTLY ONE interview question.
+
+• Maximum 30 words.
+
+• Never explain your reasoning.
+
+• Never say "I will simplify."
+
+• Never say "Based on your previous answer."
+
+• Never mention candidate scores.
+
+• Never mention interview strategy.
+
+• Never evaluate the answer.
+
+• Follow the strategy exactly.
+
+• Ask about the topic specified in Next Topic.
+
+• Use the specified Question Type.
+
+• If Question Type is Definition, ask a basic definition.
+
+• If Question Type is Concept, test conceptual understanding.
+
+• If Question Type is Implementation, ask how to implement something.
+
+• If Question Type is Scenario, ask a practical real-world problem.
+
+• If Question Type is Optimization, ask how to improve an existing solution.
+
+• If Question Type is Debugging, ask how to identify or fix an issue.
+
+• Use the candidate's resume whenever possible.
+
+• Do not repeat previous questions.
+
+• Keep the interview conversational and professional.
+"""
 
         response = self.llm.generate(
             prompt=prompt,
@@ -139,4 +201,16 @@ class InterviewerAgent:
 
     def get_history(self):
 
-        return self.conversation_history
+        history = ""
+
+        for message in self.conversation_history:
+
+            history += (
+                f"{message['role'].upper()}:\n"
+            )
+
+            history += message["content"]
+
+            history += "\n\n"
+
+        return history
