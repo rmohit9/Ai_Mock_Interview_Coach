@@ -7,7 +7,7 @@ load_dotenv()
 
 @dataclass(frozen=True)
 class Settings:
-    MISTRAL_API_KEY: str = os.getenv("MISTRAL_API_KEY", "")
+    MISTRAL_API_KEY: str = os.getenv("MISTRAL_API_KEY")
 
     MODEL_NAME: str = "mistral-small-latest"
 
