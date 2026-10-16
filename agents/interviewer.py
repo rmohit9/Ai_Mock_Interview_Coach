@@ -20,12 +20,16 @@ class InterviewerAgent:
 
         self.conversation_history = []
 
+    def reset(self):
+        self.conversation_history = []
+
     def start_interview(
         self,
         role: str,
         resume_profile: str,
         focus_area: str,
         ) -> str:
+        self.reset()
 
         prompt = f"""
 Candidate Role:

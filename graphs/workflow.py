@@ -2,7 +2,6 @@ from langgraph.graph import END, StateGraph, START
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import interrupt
 
-
 from graphs.state import InterviewState
 
 from agents.resume_analyzer import ResumeAnalyzerAgent
@@ -12,23 +11,17 @@ from agents.strategist import StrategyAgent
 from agents.coach import CoachAgent
 
 # --------------------------------------------------
-# Graph Components
+# Graph Components & Shared Agents
 # --------------------------------------------------
 
 builder = StateGraph(InterviewState)
 memory = MemorySaver()
+
+resume_agent = ResumeAnalyzerAgent()
+interviewer_agent = InterviewerAgent()
 evaluator_agent = EvaluatorAgent()
 strategy_agent = StrategyAgent()
 coach_agent = CoachAgent()
-
-
-# --------------------------------------------------
-# Agents
-# --------------------------------------------------
-
-resume_agent = ResumeAnalyzerAgent()
-
-interviewer_agent = InterviewerAgent()
 
 
 # --------------------------------------------------
@@ -36,51 +29,35 @@ interviewer_agent = InterviewerAgent()
 # --------------------------------------------------
 
 def resume_node(state: InterviewState):
-
-    profile = resume_agent.analyze(
-        state.resume
-    )
-
+    profile = resume_agent.analyze(state.resume)
     state.resume_profile = profile
-
     return state
 
 
 # --------------------------------------------------
-# Interviewer Node
+# Generate Question Node
 # --------------------------------------------------
 
-def interviewer_node(state: InterviewState):
-
-    # First question
-    if state.current_question == "":
-
+def generate_question_node(state: InterviewState):
+    """Generates the next interview question without interrupting."""
+    # First question of interview
+    if state.question_count == 0:
         question = interviewer_agent.start_interview(
-
             role=state.role,
-
-            resume_profile=state.resume_profile.model_dump_json(
-                indent=4
-            ),
-
+            resume_profile=state.resume_profile.model_dump_json(indent=4) if state.resume_profile else "",
             focus_area=state.focus,
         )
-
-    # Remaining questions
     else:
-
         question = interviewer_agent.continue_interview(
-
             answer=state.current_answer,
-
             strategy=state.strategy,
-
             state=state,
         )
 
     state.current_question = question
+    state.question_count += 1
 
-    # Save assistant message
+    # Record interviewer turn in state
     state.conversation_history.append(
         {
             "role": "assistant",
@@ -88,16 +65,35 @@ def interviewer_node(state: InterviewState):
         }
     )
 
-    # Pause graph
+    return state
+
+
+# --------------------------------------------------
+# Wait For Answer Node (Interrupt Point)
+# --------------------------------------------------
+
+def wait_for_answer_node(state: InterviewState):
+    """
+    Interrupts the graph to yield the question to the candidate
+    and awaits the user's answer. When resumed, question is NOT regenerated.
+    """
+    topic = state.strategy.next_topic if state.strategy else state.focus
+    difficulty = state.strategy.difficulty if state.strategy else "Easy"
+    question_type = state.strategy.question_type if state.strategy else "Concept"
+
     answer = interrupt(
         {
-            "question": question,
+            "question": state.current_question,
+            "question_count": state.question_count,
+            "topic": topic,
+            "difficulty": difficulty,
+            "question_type": question_type,
         }
     )
 
     state.current_answer = answer
 
-    # Save user message
+    # Record candidate turn in state
     state.conversation_history.append(
         {
             "role": "user",
@@ -107,8 +103,12 @@ def interviewer_node(state: InterviewState):
 
     return state
 
-def evaluator_node(state: InterviewState):
 
+# --------------------------------------------------
+# Evaluator Node
+# --------------------------------------------------
+
+def evaluator_node(state: InterviewState):
     evaluation = evaluator_agent.evaluate(
         question=state.current_question,
         answer=state.current_answer,
@@ -116,135 +116,91 @@ def evaluator_node(state: InterviewState):
     )
 
     state.evaluation = evaluation
-    state.evaluation_history.append(
-    evaluation.model_dump()
-    )
+    state.evaluation_history.append(evaluation.model_dump())
 
     return state
+
+
+# --------------------------------------------------
+# Strategy Node
+# --------------------------------------------------
 
 def strategy_node(state: InterviewState):
-
-    strategy = strategy_agent.decide(
-        state.evaluation
-    )
-
+    strategy = strategy_agent.decide(state.evaluation)
     state.strategy = strategy
-
     return state
 
+
+# --------------------------------------------------
+# Coach Node
+# --------------------------------------------------
+
 def coach_node(state: InterviewState):
-
     report = coach_agent.generate_report(
-
         role=state.role,
-
-        resume_profile=state.resume_profile.model_dump_json(
-            indent=4
-        ),
-
+        resume_profile=state.resume_profile.model_dump_json(indent=4) if state.resume_profile else "",
         history="\n".join(
             f"{msg['role']}: {msg['content']}"
             for msg in state.conversation_history
         ),
-
-        evaluations=state.evaluation_history
+        evaluations=state.evaluation_history,
     )
 
     state.report = report
-
     state.interview_finished = True
 
     return state
 
-def should_continue(state: InterviewState):
 
+# --------------------------------------------------
+# Conditional Routing
+# --------------------------------------------------
+
+def should_continue(state: InterviewState):
     question_count = len(state.evaluation_history)
 
-    # Never end before 5 answered questions
+    # Must ask at least 4 questions
     if question_count < 4:
-        return "interviewer"
+        return "generate_question"
 
-    # Between 5 and 6 questions,
-    # allow the Strategy Agent to decide
+    # Between 4 and 6 questions, allow the Strategy Agent to decide
     if question_count < 6:
-
-        if state.strategy.action == "END_INTERVIEW":
+        if state.strategy and state.strategy.action == "END_INTERVIEW":
             return "coach"
+        return "generate_question"
 
-        return "interviewer"
-
-    # Hard stop after 7 questions
+    # Hard stop after 6 answered questions
     return "coach"
 
 
 # --------------------------------------------------
-# Graph
+# Graph Construction
 # --------------------------------------------------
 
-builder.add_node(
-    "resume",
-    resume_node,
-)
+builder.add_node("resume", resume_node)
+builder.add_node("generate_question", generate_question_node)
+builder.add_node("wait_for_answer", wait_for_answer_node)
+builder.add_node("evaluator", evaluator_node)
+builder.add_node("strategy", strategy_node)
+builder.add_node("coach", coach_node)
 
-builder.add_node(
-    "interviewer",
-    interviewer_node,
-)
-builder.add_node(
-    "evaluator",
-    evaluator_node,
-)
-
-builder.add_node(
-    "strategy",
-    strategy_node,
-)
-
-builder.add_node(
-    "coach",
-    coach_node,
-)
-
-builder.add_edge(
-    START,
-    "resume",
-)
-
-builder.add_edge(
-    "resume",
-    "interviewer",
-)
-
-builder.add_edge(
-    "interviewer",
-    "evaluator",
-)
-
-builder.add_edge(
-    "evaluator",
-    "strategy",
-)
+builder.add_edge(START, "resume")
+builder.add_edge("resume", "generate_question")
+builder.add_edge("generate_question", "wait_for_answer")
+builder.add_edge("wait_for_answer", "evaluator")
+builder.add_edge("evaluator", "strategy")
 
 builder.add_conditional_edges(
-
     "strategy",
-
     should_continue,
-
     {
-
-        "interviewer": "interviewer",
-
+        "generate_question": "generate_question",
         "coach": "coach",
-
     },
-
 )
 
-builder.add_edge(
-    "coach",
-    END,
-)
+builder.add_edge("coach", END)
+
 graph = builder.compile(
     checkpointer=memory,
 )

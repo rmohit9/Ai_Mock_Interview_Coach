@@ -9,22 +9,18 @@ from graphs.state import InterviewState
 class InterviewService:
 
     def __init__(self):
-
         self.thread_id = str(uuid4())
-
         self.config = None
         self.graph = graph
         self.interview_finished = False
 
     def start_interview(
         self,
-        role,
-        resume,
-        focus,
+        role: str,
+        resume: str,
+        focus: str,
     ):
-
         self.thread_id = str(uuid4())
-
         self.config = {
             "configurable": {
                 "thread_id": self.thread_id
@@ -38,33 +34,43 @@ class InterviewService:
             thread_id=self.thread_id,
         )
 
-        result = graph.invoke(
+        result = self.graph.invoke(
             state,
             config=self.config,
         )
 
-        interrupt = result["__interrupt__"][0]
+        if "__interrupt__" in result and len(result["__interrupt__"]) > 0:
+            interrupt = result["__interrupt__"][0]
+            val = interrupt.value
+            return val
 
-        return interrupt.value["question"]
+        return {
+            "question": "Could not generate interview question. Please try again.",
+            "difficulty": "Easy",
+            "topic": focus,
+            "question_type": "Concept",
+        }
 
     def process_answer(
         self,
-        answer,
+        answer: str,
     ):
-
-        result = graph.invoke(
+        result = self.graph.invoke(
             Command(
                 resume=answer
             ),
             config=self.config,
         )
 
-        if "__interrupt__" in result:
-
+        if "__interrupt__" in result and len(result["__interrupt__"]) > 0:
             interrupt = result["__interrupt__"][0]
+            val = interrupt.value
+            question_str = val.get("question", "") if isinstance(val, dict) else str(val)
+            question_data = val if isinstance(val, dict) else {}
 
             return {
-                "question": interrupt.value["question"],
+                "question": question_str,
+                "question_data": question_data,
                 "evaluation": result.get("evaluation"),
                 "strategy": result.get("strategy"),
                 "report": None,
@@ -74,19 +80,22 @@ class InterviewService:
 
         return {
             "question": None,
+            "question_data": {},
             "evaluation": result.get("evaluation"),
             "strategy": result.get("strategy"),
             "report": result.get("report"),
         }
-    
-    def end_interview(self):
 
+    def end_interview(self):
         from graphs.workflow import coach_node
 
-        state = self.graph.get_state(self.config).values
+        state_snapshot = self.graph.get_state(self.config)
+        if not state_snapshot or not state_snapshot.values:
+            return None
 
-        state.strategy.action = "END_INTERVIEW"
+        state = state_snapshot.values
+        if hasattr(state, "strategy") and state.strategy:
+            state.strategy.action = "END_INTERVIEW"
 
         state = coach_node(state)
-
         return state.report

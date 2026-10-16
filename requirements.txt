@@ -28,5 +28,7 @@ orjson>=3.11.3
 # Tokenization
 tiktoken>=0.11.0
 
+# Add this under dependencies
 groq
+langchain-groq>=0.2.0
 

@@ -8,12 +8,13 @@ focus = input("Focus Area: ")
 
 print()
 
-question = service.start_interview(
+question_data = service.start_interview(
     role,
     resume,
     focus,
 )
 
+question = question_data.get("question", "") if isinstance(question_data, dict) else str(question_data)
 print(question)
 
 while True:
