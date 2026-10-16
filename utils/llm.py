@@ -1,6 +1,6 @@
 import time
 
-from langchain_mistralai import ChatMistralAI
+from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from config import settings
@@ -10,19 +10,14 @@ class LLM:
 
     def __init__(self):
 
-        self.model = ChatMistralAI(
-            api_key=settings.MISTRAL_API_KEY,
+        self.model = ChatGroq(
+            groq_api_key=settings.GROQ_API_KEY,
             model=settings.MODEL_NAME,
             temperature=settings.TEMPERATURE,
             max_tokens=settings.MAX_TOKENS,
         )
 
-    def generate(
-        self,
-        prompt: str,
-        system_prompt: str = "",
-        retries: int = 3,
-    ) -> str:
+    def generate(self, prompt: str, system_prompt: str = "", retries: int = 3) -> str:
 
         last_error = None
 

@@ -28,3 +28,5 @@ orjson>=3.11.3
 # Tokenization
 tiktoken>=0.11.0
 
+groq
+
