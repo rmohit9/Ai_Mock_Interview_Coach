@@ -28,7 +28,11 @@ class EvaluatorAgent:
     Candidate Answer:
     {answer}
 
-    Evaluate the answer objectively.
+    Evaluate the answer with leniency and fairness.
+    - Completely ignore any typos, spelling mistakes, or grammatical errors.
+    - If the answer is 60-70% correct, treat it as largely correct and score generously.
+    - Reward conceptual understanding even if the wording is informal or imprecise.
+    - When in doubt between two scores, choose the higher one.
 
     Return ONLY valid JSON.
     """
