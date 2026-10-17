@@ -9,7 +9,8 @@ class StrategyAgent:
 
     def __init__(self):
 
-        self.llm = LLM()
+        # Strategy JSON is small — cap tokens low for faster responses
+        self.llm = LLM(max_tokens=400)
 
         self.system_prompt = load_prompt(
             "strategist.txt"

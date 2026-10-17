@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 
 
@@ -21,3 +21,6 @@ class Evaluation(BaseModel):
     weaknesses: List[str]
 
     suggestions: List[str]
+
+    # True when the candidate skipped the question (no LLM evaluation)
+    skipped: bool = False

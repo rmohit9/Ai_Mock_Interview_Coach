@@ -50,3 +50,6 @@ class InterviewState(BaseModel):
     # -------------------------
 
     interview_finished: bool = False
+
+    # Set to True when the user skips a question — bypasses evaluator & strategy
+    skipped: bool = False

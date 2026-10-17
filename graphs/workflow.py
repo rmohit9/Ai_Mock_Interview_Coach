@@ -122,6 +122,48 @@ def evaluator_node(state: InterviewState):
 
 
 # --------------------------------------------------
+# Skip Node (fast-path — no LLM calls)
+# --------------------------------------------------
+
+def skip_node(state: InterviewState):
+    """
+    Records a skipped question without calling any LLM.
+    Appends a sentinel entry to evaluation_history so question_count
+    stays consistent for the should_continue router.
+    """
+    from models.evaluation import Evaluation
+    from models.strategy import Strategy
+
+    skipped_eval = Evaluation(
+        technical=0,
+        communication=0,
+        confidence=0,
+        problem_solving=0,
+        depth=0,
+        completeness=0,
+        strengths=[],
+        weaknesses=["Question skipped"],
+        suggestions=["Attempt this type of question in future interviews."],
+        skipped=True,
+    )
+    state.evaluation = skipped_eval
+    state.evaluation_history.append(skipped_eval.model_dump())
+    state.skipped = False  # Reset flag for next question
+
+    # Ensure a valid strategy exists so continue_interview never gets None
+    if state.strategy is None:
+        state.strategy = Strategy(
+            action="CONTINUE",
+            difficulty="Easy",
+            next_topic=state.focus,
+            question_type="Concept",
+            reason="Candidate skipped previous question; continuing at easy difficulty.",
+        )
+
+    return state
+
+
+# --------------------------------------------------
 # Strategy Node
 # --------------------------------------------------
 
@@ -129,6 +171,17 @@ def strategy_node(state: InterviewState):
     strategy = strategy_agent.decide(state.evaluation)
     state.strategy = strategy
     return state
+
+
+# --------------------------------------------------
+# Route after answer: skip fast-path vs normal eval
+# --------------------------------------------------
+
+def route_after_answer(state: InterviewState):
+    """Routes to skip_node (no LLM) or evaluator based on skipped flag."""
+    if state.skipped:
+        return "skip"
+    return "evaluator"
 
 
 # --------------------------------------------------
@@ -181,14 +234,35 @@ builder.add_node("resume", resume_node)
 builder.add_node("generate_question", generate_question_node)
 builder.add_node("wait_for_answer", wait_for_answer_node)
 builder.add_node("evaluator", evaluator_node)
+builder.add_node("skip", skip_node)
 builder.add_node("strategy", strategy_node)
 builder.add_node("coach", coach_node)
 
 builder.add_edge(START, "resume")
 builder.add_edge("resume", "generate_question")
 builder.add_edge("generate_question", "wait_for_answer")
-builder.add_edge("wait_for_answer", "evaluator")
+
+# After the candidate responds, route to skip fast-path or normal evaluator
+builder.add_conditional_edges(
+    "wait_for_answer",
+    route_after_answer,
+    {
+        "evaluator": "evaluator",
+        "skip": "skip",
+    },
+)
+
 builder.add_edge("evaluator", "strategy")
+
+# Skipped questions keep the previous strategy and go straight to next question
+builder.add_conditional_edges(
+    "skip",
+    should_continue,
+    {
+        "generate_question": "generate_question",
+        "coach": "coach",
+    },
+)
 
 builder.add_conditional_edges(
     "strategy",

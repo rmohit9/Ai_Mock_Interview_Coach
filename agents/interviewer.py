@@ -14,7 +14,8 @@ class InterviewerAgent:
 
     def __init__(self):
 
-        self.llm = LLM()
+        # Questions are max 30 words — cap tokens low for faster responses
+        self.llm = LLM(max_tokens=400)
 
         self.system_prompt = load_prompt("interviewer.txt")
 

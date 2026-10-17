@@ -87,8 +87,48 @@ class InterviewService:
         }
 
     def skip_question(self):
-        """Skips the current question by submitting 'Not Answered' as the answer."""
-        return self.process_answer("Not Answered")
+        """
+        Skips the current question.
+
+        Sets the `skipped` flag on the state so the graph routes to the
+        zero-LLM skip_node, bypassing evaluator and strategist entirely.
+        This saves ~2 LLM calls compared to submitting 'Not Answered'.
+        """
+        # Update the persisted state to mark the question as skipped
+        self.graph.update_state(
+            config=self.config,
+            values={"skipped": True, "current_answer": "Not Answered"},
+        )
+
+        # Resume the graph — route_after_answer will see skipped=True
+        # and go directly to skip_node → generate_question
+        result = self.graph.invoke(
+            Command(resume="Not Answered"),
+            config=self.config,
+        )
+
+        if "__interrupt__" in result and len(result["__interrupt__"]) > 0:
+            interrupt = result["__interrupt__"][0]
+            val = interrupt.value
+            question_str = val.get("question", "") if isinstance(val, dict) else str(val)
+            question_data = val if isinstance(val, dict) else {}
+
+            return {
+                "question": question_str,
+                "question_data": question_data,
+                "evaluation": None,
+                "strategy": result.get("strategy"),
+                "report": None,
+            }
+
+        self.interview_finished = True
+        return {
+            "question": None,
+            "question_data": {},
+            "evaluation": None,
+            "strategy": result.get("strategy"),
+            "report": result.get("report"),
+        }
 
     def end_interview(self):
         from graphs.workflow import coach_node
