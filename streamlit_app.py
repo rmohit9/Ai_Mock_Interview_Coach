@@ -94,6 +94,7 @@ defaults = {
     "next_question": None,
     "next_question_data": {},
     "show_evaluation": False,
+    "last_skipped": False,
 }
 
 for key, value in defaults.items():
@@ -131,11 +132,16 @@ with st.sidebar:
         if st.session_state.questions_history:
             for item in st.session_state.questions_history:
                 q_num = item["q_num"]
-                q_score = calculate_overall_score(item.get("evaluation"))
-                with st.expander(f"Q{q_num}: {item['question'][:38]}... ({q_score}/10)"):
+                skipped = item.get("skipped", False)
+                q_score = calculate_overall_score(item.get("evaluation")) if not skipped else "—"
+                label = f"Q{q_num}: {item['question'][:38]}... ({'⏭️ Skipped' if skipped else f'{q_score}/10'})"
+                with st.expander(label):
                     st.markdown(f"**Question:** {item['question']}")
-                    st.markdown(f"**Your Answer:** {item['answer']}")
-                    st.markdown(f"**Score:** `{q_score}/10`")
+                    if skipped:
+                        st.warning("⏭️ This question was skipped — marked as **Not Answered**.")
+                    else:
+                        st.markdown(f"**Your Answer:** {item['answer']}")
+                        st.markdown(f"**Score:** `{q_score}/10`")
         else:
             st.caption("No questions answered yet.")
 
@@ -245,12 +251,21 @@ else:
             key="current_answer_input",
         )
 
-        submit = st.button(
-            "Submit Answer",
-            use_container_width=True,
-            type="primary",
-            disabled=st.session_state.show_evaluation,
-        )
+        col_submit, col_skip = st.columns([3, 1])
+        with col_submit:
+            submit = st.button(
+                "Submit Answer",
+                use_container_width=True,
+                type="primary",
+                disabled=st.session_state.show_evaluation,
+            )
+        with col_skip:
+            skip = st.button(
+                "⏭️ Skip Question",
+                use_container_width=True,
+                disabled=st.session_state.show_evaluation,
+                help="Skip this question — it will be recorded as 'Not Answered' in the final report.",
+            )
 
         # Handle Submit
         if submit:
@@ -258,6 +273,7 @@ else:
                 st.warning("Please enter your answer before submitting.")
             else:
                 st.session_state.user_answer = answer
+                st.session_state.last_skipped = False
                 with st.spinner("Evaluating your response with AI Evaluator..."):
                     result = st.session_state.service.process_answer(answer)
 
@@ -272,6 +288,7 @@ else:
                         "question": st.session_state.question,
                         "answer": answer,
                         "evaluation": st.session_state.evaluation,
+                        "skipped": False,
                     }
                 )
 
@@ -289,6 +306,43 @@ else:
 
                 scroll_to_top()
                 st.rerun()
+
+        # Handle Skip
+        if skip:
+            st.session_state.user_answer = "Not Answered"
+            st.session_state.last_skipped = True
+            with st.spinner("Skipping question..."):
+                result = st.session_state.service.skip_question()
+
+            st.session_state.evaluation = result.get("evaluation")
+            st.session_state.report = result.get("report")
+            st.session_state.show_evaluation = True
+
+            # Save history record marked as skipped
+            st.session_state.questions_history.append(
+                {
+                    "q_num": st.session_state.question_count,
+                    "question": st.session_state.question,
+                    "answer": "Not Answered",
+                    "evaluation": st.session_state.evaluation,
+                    "skipped": True,
+                }
+            )
+
+            if result.get("report") is None:
+                next_q_res = result.get("question")
+                next_q_meta = result.get("question_data", {})
+                if isinstance(next_q_res, dict):
+                    st.session_state.next_question = next_q_res.get("question", "")
+                    st.session_state.next_question_data = next_q_res
+                else:
+                    st.session_state.next_question = str(next_q_res) if next_q_res else ""
+                    st.session_state.next_question_data = next_q_meta if isinstance(next_q_meta, dict) else {}
+            else:
+                st.session_state.next_question = None
+
+            scroll_to_top()
+            st.rerun()
 
     # --- Evaluation & Final Report View ---
     if st.session_state.show_evaluation:
@@ -316,7 +370,10 @@ else:
         st.subheader("💡 Context & Your Answer")
         with st.expander("Show Question & Submitted Answer", expanded=True):
             st.markdown(f"**Question {st.session_state.question_count}:** {st.session_state.question}")
-            st.markdown(f"**Your Answer:** {st.session_state.user_answer}")
+            if st.session_state.get("last_skipped", False):
+                st.warning("⏭️ You **skipped** this question — it has been recorded as **Not Answered** in your final report.")
+            else:
+                st.markdown(f"**Your Answer:** {st.session_state.user_answer}")
 
         evaluation = st.session_state.evaluation
 

@@ -86,6 +86,10 @@ class InterviewService:
             "report": result.get("report"),
         }
 
+    def skip_question(self):
+        """Skips the current question by submitting 'Not Answered' as the answer."""
+        return self.process_answer("Not Answered")
+
     def end_interview(self):
         from graphs.workflow import coach_node
 
