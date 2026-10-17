@@ -314,32 +314,38 @@ else:
             with st.spinner("Skipping question..."):
                 result = st.session_state.service.skip_question()
 
-            st.session_state.evaluation = result.get("evaluation")
-            st.session_state.report = result.get("report")
-            st.session_state.show_evaluation = True
-
             # Save history record marked as skipped
             st.session_state.questions_history.append(
                 {
                     "q_num": st.session_state.question_count,
                     "question": st.session_state.question,
                     "answer": "Not Answered",
-                    "evaluation": st.session_state.evaluation,
+                    "evaluation": None,
                     "skipped": True,
                 }
             )
 
             if result.get("report") is None:
+                # Not the last question — go directly to next question, skip evaluation screen
                 next_q_res = result.get("question")
                 next_q_meta = result.get("question_data", {})
                 if isinstance(next_q_res, dict):
-                    st.session_state.next_question = next_q_res.get("question", "")
-                    st.session_state.next_question_data = next_q_res
+                    st.session_state.question = next_q_res.get("question", "")
+                    st.session_state.question_data = next_q_res
                 else:
-                    st.session_state.next_question = str(next_q_res) if next_q_res else ""
-                    st.session_state.next_question_data = next_q_meta if isinstance(next_q_meta, dict) else {}
-            else:
+                    st.session_state.question = str(next_q_res) if next_q_res else ""
+                    st.session_state.question_data = next_q_meta if isinstance(next_q_meta, dict) else {}
+                st.session_state.question_count += 1
                 st.session_state.next_question = None
+                st.session_state.next_question_data = {}
+                st.session_state.evaluation = None
+                st.session_state.show_evaluation = False
+            else:
+                # Last question — show the final report
+                st.session_state.evaluation = result.get("evaluation")
+                st.session_state.report = result.get("report")
+                st.session_state.next_question = None
+                st.session_state.show_evaluation = True
 
             scroll_to_top()
             st.rerun()
